@@ -1,0 +1,154 @@
+import { config } from './config.js'
+
+const LANG_STORAGE_KEY = 'play_and_win_lang'
+
+let currentLang = loadInitialLanguage()
+const listeners = new Set()
+
+function loadInitialLanguage() {
+  try {
+    const saved = sessionStorage.getItem(LANG_STORAGE_KEY)
+    if (saved && isSupportedLang(saved)) {
+      return saved
+    }
+  } catch {
+    // Ignore storage errors in restricted environments
+  }
+  return config.languages.defaultLanguage || 'en'
+}
+
+export function isSupportedLang(code) {
+  return config.languages.supported.some((lang) => lang.code === code)
+}
+
+export function getLang() {
+  return currentLang
+}
+
+export function getLangMeta(code = currentLang) {
+  return (
+    config.languages.supported.find((lang) => lang.code === code) ||
+    config.languages.supported[0]
+  )
+}
+
+export function setLang(code) {
+  if (!isSupportedLang(code) || code === currentLang) return
+  currentLang = code
+  try {
+    sessionStorage.setItem(LANG_STORAGE_KEY, code)
+  } catch {
+    // Ignore storage errors
+  }
+  applyDocumentLang()
+  for (const fn of listeners) {
+    fn(code)
+  }
+}
+
+export function onLangChange(listener) {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+export function applyDocumentLang() {
+  if (typeof document === 'undefined') return
+  const meta = getLangMeta(currentLang)
+  document.documentElement.lang = meta.htmlLang || meta.code
+}
+
+/**
+ * Translate a UI copy key with optional `{placeholder}` interpolation.
+ * Automatically falls back to English if a key is missing in another language.
+ */
+export function t(key, vars = {}, lang = currentLang) {
+  const defaultLang = config.languages.defaultLanguage || 'en'
+  const dict = config.copy[lang] || config.copy[defaultLang] || {}
+  const fallbackDict = config.copy[defaultLang] || {}
+  let text = dict[key] ?? fallbackDict[key] ?? key
+
+  for (const [k, v] of Object.entries(vars)) {
+    text = text.replaceAll(`{${k}}`, String(v))
+  }
+  return text
+}
+
+/**
+ * Resolve event branding fields (`clientName`, `eventName`, `appTitle`, `tagline`).
+ * Falls back to top-level `config.event` so editing English there always works.
+ */
+export function getEventText(field, lang = currentLang) {
+  const defaultLang = config.languages.defaultLanguage || 'en'
+  if (lang === defaultLang) {
+    return config.event[field] ?? ''
+  }
+  const translated = config.event.translations?.[lang]?.[field]
+  return translated ?? config.event[field] ?? ''
+}
+
+/**
+ * Resolve a quiz question's text & options for the active language.
+ * Falls back cleanly to the plain starter format (`question`, `options`).
+ */
+export function getLocalizedQuestion(rawQuestion, lang = currentLang) {
+  const defaultLang = config.languages.defaultLanguage || 'en'
+  const tr = lang !== defaultLang ? rawQuestion.translations?.[lang] : null
+  const question = tr?.question || rawQuestion.question
+  const options =
+    Array.isArray(tr?.options) && tr.options.length === rawQuestion.options.length
+      ? tr.options
+      : rawQuestion.options
+  return {
+    id: rawQuestion.id,
+    question,
+    options,
+    answerIndex: rawQuestion.answerIndex,
+  }
+}
+
+/**
+ * Resolve a Memory Match card symbol label for the active language.
+ */
+export function getSymbolLabel(symbol, lang = currentLang) {
+  const defaultLang = config.languages.defaultLanguage || 'en'
+  if (symbol.labels) {
+    return symbol.labels[lang] || symbol.labels[defaultLang] || symbol.id
+  }
+  return symbol.label || symbol.id
+}
+
+export function getGameName(gameId, lang = currentLang) {
+  if (gameId === 'quiz') return t('quizTitle', {}, lang)
+  if (gameId === 'memory') return t('memoryTitle', {}, lang)
+  return gameId || ''
+}
+
+/**
+ * Render the compact Singapore 4-language segmented tab bar.
+ */
+export function renderLanguageBar(container) {
+  const active = getLang()
+  container.innerHTML = `
+    <div class="lang-bar" role="tablist" aria-label="Choose language">
+      ${config.languages.supported
+        .map(
+          (lang) => `
+        <button
+          type="button"
+          class="lang-tab ${lang.code === active ? 'is-active' : ''}"
+          role="tab"
+          aria-selected="${lang.code === active ? 'true' : 'false'}"
+          data-lang="${lang.code}"
+        >${lang.label}</button>
+      `,
+        )
+        .join('')}
+    </div>
+  `
+
+  container.querySelectorAll('.lang-tab').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      setLang(btn.dataset.lang)
+    })
+  })
+}

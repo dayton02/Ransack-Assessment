@@ -88,13 +88,44 @@ You can use any framework or library, as long as `npm install` and `npm start` s
 
 ## Your notes
 
-Replace this section before you submit.
-
 - **Where to change the settings:**
-- **How saving and loading works, and why I chose that format** (or why I left it out):
+  All configurable settings live in one single file: **[`src/config.js`](src/config.js)** (imported directly by both the Vite frontend and `server.js`):
+  - **Event branding & text:** `config.event` (club name, event name, title, tagline, version) and `config.copy` (all UI copy in English, Chinese, Malay, and Tamil — with automatic fallback to English).
+  - **Languages:** `config.languages` (`EN`, `中文`, `BM`, `தமிழ்`).
+  - **Pass mark:** `config.rules.passMark` (default `0.8` = 80%; dynamically recalculates the required winning score for both games).
+  - **Fun-Fact Quiz:** `config.quiz` (`questions`, `questionLimit`, `shuffleQuestions`, `pointsPerCorrect`). Questions support any number of options with 0-based `answerIndex`; optional `translations` localize each question while any newly added plain question works automatically across all languages.
+  - **Forest Canopy Memory Match:** `config.memory` (`timeLimitSeconds`, `pairCount` from 2–8, `pointsPerPair`, `mismatchDelayMs`, `symbols`). Fixed max score is `pairCount * pointsPerPair` (default `6 × 100 = 600`).
+  - **Staff / Admin PIN:** `config.admin.staffPin` (default `1234`, also overridable via the `STAFF_PIN` environment variable).
+  - *Note:* `src/data/questions.json` was folded into `src/config.js` so there is only one place to update.
+
+- **How saving and loading works, and why I chose that format:**
+  - All phones talk through `src/api.js` → Vite `/api` proxy → `server.js` → `db.js`, writing to a single shared **SQLite database file** (`data/play-and-win.db`) using Node's built-in `node:sqlite` (`DatabaseSync`) with **`PRAGMA journal_mode = WAL;`** and explicit transactions.
+  - **Why SQLite WAL instead of raw JSON/CSV:** When multiple phones submit scores simultaneously on event Wi-Fi, raw `fs.writeFile` JSON writes can overwrite or corrupt each other, and updating a prize's `claimed = true` state in append-only CSV/JSONL is error-prone. SQLite stays a single local file with zero database server setup, guarantees ACID concurrency safety, supports atomic duplicate-claim prevention (`409 Conflict`), and exports a clean CSV (`GET /api/admin/export.csv`) on demand.
+  - **Compatibility safeguard:** Because `package.json` supports Node `^20.19.0 || >=22.12.0` (and `node:sqlite` ships from Node 22.5+), `db.js` automatically falls back to a promise-serialized atomic temp-file JSON store on Node 20.x—with zero native C++ (`node-gyp`) build dependencies to break `npm install`.
+
 - **Assumptions I made:**
+  - **Family phone-passing:** Families often share one parent's phone among several kids or grandparents, so locking the whole device after one win would create booth friction. Instead, each playthrough gets a `session_id` in `sessionStorage` with a unique backend **Claim Code** (e.g., `OAK-42`). Once booth staff verify and redeem it with the 4-digit PIN, refreshing the page still shows `PRIZE CLAIMED`, while tapping **"Play Again (Next Player)"** starts a clean session for the next family member.
+  - **Singapore multi-generational audience:** Added a top 4-language switcher (`EN | 中文 | BM | தமிழ்`) that updates screens and active games in-place without losing timer, score, or claim state.
+  - **LAN HTTP testing:** Used a `crypto.getRandomValues` UUID generator instead of `crypto.randomUUID()` alone because browsers restrict `crypto.randomUUID()` over plain `http://192.168.x.x` Wi-Fi addresses.
+  - **Admin access:** Accessible directly via `#/admin` (for bookmarking on staff phones/tablets) or by triple-tapping the version pill in the Landing Screen footer, protected by a backend-verified 4-digit staff PIN (`1234` default).
+
 - **What I prioritised, and why:**
+  1. **All-ages accessibility & polish:** Chose **Forest Canopy Memory Match** (45s, 6 pairs, 600 max score) over reflex-based games so toddlers and grandparents can play on equal footing with big tap targets, flat vector SVG icons + native-language labels, and immediate confetti celebration on early clear.
+  2. **Zero-friction configurability:** Every knob (questions, option counts, pass mark, timer, pair count, copy, PIN) lives in `src/config.js` and dynamically updates all calculations and labels.
+  3. **Real-world booth reliability:** Concurrency-safe SQLite WAL backend, server-authoritative claim redemption (defeating prize-screen screenshots), Admin Dashboard with claim code lookup + CSV export, and zero external framework bloat (Vanilla JS + Vite + native CSS).
+
 - **What I left out or didn't finish, and why:**
+  - **Audio / sound effects:** Intentionally omitted so phones don't unexpectedly chime loudly in a busy community hall.
+  - **Offline PWA queuing:** Assumed players are connected to the local event Wi-Fi hosting `npm start`.
+  - **Per-staff user accounts:** Kept staff authentication to a single fast 4-digit booth PIN to keep prize-line throughput quick.
+
 - **Time planned vs. time spent:**
-- **How I used AI** (and one suggestion I changed or didn't use):
+  - Planned ~3–4 hours across brief analysis, architecture planning, implementation, and mobile/API verification; completed within budget by keeping the stack lean (Vanilla JS + native CSS + built-in `node:sqlite`).
+
+- **How I used AI (and one suggestion I changed or didn't use):**
+  - Used AI to plan the architecture, write the modular frontend/backend code, author the hand-coded flat SVG forest icons (no AI-generated raster artwork), localize the 4 Singapore languages, and write automated concurrency tests.
+  - **Decisions changed from initial AI/default ideas:** (1) Replaced `better-sqlite3` with Node's built-in `node:sqlite` + Node 20 fallback so `npm install` never fails compiling native C++ bindings on Node 26 / Windows; (2) Added a Singapore 4-language tab bar (`EN / 中文 / BM / தமிழ்`) specifically tailored to multi-generational family events.
+
 - **Anything I'm unsure about:**
+  - Whether Harbour Point Community Club prefers quiz questions in a fixed order or shuffled per player (`config.quiz.shuffleQuestions` is a one-line boolean toggle in `src/config.js`).
+  - Final booth staff PIN (`1234` default in `src/config.js`, overridable via `STAFF_PIN` env var) and whether they'd like any additional languages or custom event prizes listed on the Final Screen.

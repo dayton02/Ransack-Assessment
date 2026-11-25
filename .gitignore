@@ -4,6 +4,7 @@ dist
 .env.*
 *.log
 .DS_Store
+data/
 
 # Interviewer-only documents (keep out of the public template)
 internal/

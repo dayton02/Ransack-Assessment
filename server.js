@@ -1,28 +1,188 @@
-// The server is already set up: `npm start` runs it alongside the app.
-// The app talks to it through src/api.js. You only need to fill in the TODOs.
+// Express backend for Play & Win.
+// `npm start` runs this alongside Vite (which proxies /api/* -> localhost:3001).
 import express from 'express'
+import crypto from 'node:crypto'
+import { config } from './src/config.js'
+import { getDb } from './db.js'
 
 const app = express()
-app.use(express.json()) // lets the server read JSON sent by the app
+app.use(express.json())
 
-// Lets the starter screen check the server is running. Safe to remove.
-app.get('/api/ping', (req, res) => {
-  res.json({ ok: true })
+const VALID_EVENT_TYPES = new Set([
+  'session_start',
+  'game_picked',
+  'game_completed',
+  'final_screen_view',
+])
+
+function getExpectedStaffPin() {
+  return String(process.env.STAFF_PIN || config.admin.staffPin || '1234').trim()
+}
+
+function isValidStaffPin(candidate) {
+  const expected = getExpectedStaffPin()
+  const actual = String(candidate || '').trim()
+  if (actual.length !== expected.length) return false
+  return crypto.timingSafeEqual(Buffer.from(actual), Buffer.from(expected))
+}
+
+function requireAdminPin(req, res, next) {
+  const pin = req.get('X-Admin-Pin') || req.query.pin || ''
+  if (!isValidStaffPin(pin)) {
+    return res.status(401).json({ ok: false, error: 'Invalid staff PIN' })
+  }
+  next()
+}
+
+// Health check
+app.get('/api/ping', async (req, res) => {
+  const db = await getDb()
+  res.json({ ok: true, engine: db.engine })
 })
 
-// Save one record sent by the app.
+// Save one event record sent by the app.
+// On a winning `game_completed`, atomically generates & returns a unique Claim Code.
 app.post('/api/records', async (req, res) => {
-  const record = req.body
-  // TODO: save `record` to a file. You choose the format (e.g. CSV, JSON).
+  try {
+    const record = req.body || {}
+    if (!record.sessionId || typeof record.sessionId !== 'string') {
+      return res.status(400).json({ ok: false, error: 'Missing sessionId' })
+    }
+    if (!VALID_EVENT_TYPES.has(record.eventType)) {
+      return res.status(400).json({ ok: false, error: 'Invalid eventType' })
+    }
+    const db = await getDb()
+    const result = await db.recordEvent(record)
+    res.json(result)
+  } catch (err) {
+    console.error('POST /api/records failed:', err)
+    res.status(500).json({ ok: false, error: 'Failed to save record' })
+  }
+})
+
+// Return all saved records (protected by staff PIN).
+app.get('/api/records', requireAdminPin, async (req, res) => {
+  try {
+    const db = await getDb()
+    const data = await db.getAllRecords()
+    res.json(data)
+  } catch (err) {
+    console.error('GET /api/records failed:', err)
+    res.status(500).json({ ok: false, error: 'Failed to load records' })
+  }
+})
+
+// Fetch live claim status for a specific player session (used on Final Screen reload).
+app.get('/api/sessions/:sessionId', async (req, res) => {
+  try {
+    const db = await getDb()
+    const session = await db.getSession(req.params.sessionId)
+    if (!session) {
+      return res.status(404).json({ ok: false, error: 'Session not found' })
+    }
+    res.json({ ok: true, session })
+  } catch (err) {
+    console.error('GET /api/sessions/:sessionId failed:', err)
+    res.status(500).json({ ok: false, error: 'Failed to fetch session' })
+  }
+})
+
+// Staff prize redemption endpoint for a player session (requires 4-digit staff PIN).
+app.post('/api/sessions/:sessionId/redeem', async (req, res) => {
+  try {
+    const pin = req.body?.pin || req.get('X-Admin-Pin') || ''
+    if (!isValidStaffPin(pin)) {
+      return res.status(403).json({ ok: false, error: 'Invalid staff PIN' })
+    }
+    const db = await getDb()
+    const result = await db.redeemSession(req.params.sessionId)
+    res.status(result.status || 200).json(result)
+  } catch (err) {
+    console.error('POST /api/sessions/:sessionId/redeem failed:', err)
+    res.status(500).json({ ok: false, error: 'Failed to redeem prize' })
+  }
+})
+
+// Verify staff PIN for Admin Dashboard access.
+app.post('/api/admin/verify', (req, res) => {
+  const pin = req.body?.pin || ''
+  if (!isValidStaffPin(pin)) {
+    return res.status(401).json({ ok: false, error: 'Incorrect PIN' })
+  }
   res.json({ ok: true })
 })
 
-// Send all saved records back to the app.
-app.get('/api/records', async (req, res) => {
-  // TODO: read your file and send back the records.
-  res.json([])
+// Aggregated event statistics & claim lookup list for the Admin Dashboard.
+app.get('/api/admin/stats', requireAdminPin, async (req, res) => {
+  try {
+    const db = await getDb()
+    const stats = await db.getAdminStats()
+    res.json({ ok: true, stats })
+  } catch (err) {
+    console.error('GET /api/admin/stats failed:', err)
+    res.status(500).json({ ok: false, error: 'Failed to compute stats' })
+  }
 })
 
-// Change these routes or add your own if you prefer.
+// Redeem directly by claim code from the Admin Dashboard lookup table.
+app.post('/api/admin/redeem-code', requireAdminPin, async (req, res) => {
+  try {
+    const code = req.body?.claimCode || ''
+    const db = await getDb()
+    const result = await db.redeemByCode(code)
+    res.status(result.status || 200).json(result)
+  } catch (err) {
+    console.error('POST /api/admin/redeem-code failed:', err)
+    res.status(500).json({ ok: false, error: 'Failed to redeem code' })
+  }
+})
 
-app.listen(3001, () => console.log('Server running on http://localhost:3001'))
+// One-click CSV export of all sessions for event organizers.
+app.get('/api/admin/export.csv', requireAdminPin, async (req, res) => {
+  try {
+    const db = await getDb()
+    const csv = await db.exportSessionsCsv()
+    const dateStamp = new Date().toISOString().slice(0, 10)
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="play-and-win-sessions-${dateStamp}.csv"`,
+    )
+    res.send(csv)
+  } catch (err) {
+    console.error('GET /api/admin/export.csv failed:', err)
+    res.status(500).json({ ok: false, error: 'Failed to export CSV' })
+  }
+})
+
+// Clear all test data before the event starts.
+app.post('/api/admin/reset', requireAdminPin, async (req, res) => {
+  try {
+    const db = await getDb()
+    await db.resetAllData()
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('POST /api/admin/reset failed:', err)
+    res.status(500).json({ ok: false, error: 'Failed to reset data' })
+  }
+})
+
+const PORT = Number(process.env.PORT || 3001)
+getDb()
+  .then((db) => {
+    const server = app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT} (storage: ${db.engine} -> ${db.filePath})`)
+    })
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use. Stop any existing \`npm start\` terminal and try again.`)
+      } else {
+        console.error('Server error:', err)
+      }
+      process.exit(1)
+    })
+  })
+  .catch((err) => {
+    console.error('Failed to initialise database:', err)
+    process.exit(1)
+  })
