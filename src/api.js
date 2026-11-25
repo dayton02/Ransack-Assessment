@@ -2,11 +2,11 @@
 
 async function requestJson(url, options = {}) {
   const response = await fetch(url, {
+    ...options,
     headers: {
       'Content-Type': 'application/json',
       ...(options.headers || {}),
     },
-    ...options,
   })
 
   let data = null
@@ -65,6 +65,40 @@ export async function getSessionStatus(sessionId) {
     return res.data?.session || null
   } catch {
     return null
+  }
+}
+
+/**
+ * Check whether this phone/device has already claimed its prize.
+ */
+export async function getDeviceEligibility(deviceId) {
+  try {
+    const res = await requestJson(`/api/devices/${encodeURIComponent(deviceId)}`, {
+      method: 'GET',
+    })
+    if (!res.ok) return null
+    return res.data
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Staff Family-Pass Override: allow one additional prize claim on a shared family phone.
+ */
+export async function unlockDeviceForFamily(deviceId, pin) {
+  try {
+    const res = await requestJson(`/api/devices/${encodeURIComponent(deviceId)}/unlock`, {
+      method: 'POST',
+      body: JSON.stringify({ pin }),
+    })
+    return {
+      ok: res.ok && Boolean(res.data?.ok),
+      status: res.status,
+      ...(res.data || {}),
+    }
+  } catch {
+    return { ok: false, status: 0, networkError: true }
   }
 }
 

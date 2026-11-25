@@ -1,7 +1,52 @@
 import { config } from './config.js'
 
 const SESSION_STORAGE_KEY = 'play_and_win_session_v1'
+const DEVICE_STORAGE_KEY = 'play_and_win_device_id_v1'
+const DEVICE_COOKIE_NAME = 'paw_device_id'
 const ADMIN_PIN_KEY = 'play_and_win_admin_pin'
+
+function readCookie(name) {
+  if (typeof document === 'undefined') return ''
+  const match = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith(`${name}=`))
+  return match ? decodeURIComponent(match.split('=').slice(1).join('=')) : ''
+}
+
+function writeCookie(name, value) {
+  if (typeof document === 'undefined') return
+  try {
+    document.cookie = `${name}=${encodeURIComponent(value)}; max-age=2592000; path=/; SameSite=Lax`
+  } catch {
+    // Ignore cookie errors in restricted contexts
+  }
+}
+
+/**
+ * Persistent device identifier mirrored across both localStorage and a cookie
+ * so refreshing or closing the browser cannot reset a claimed phone.
+ */
+export function getDeviceId() {
+  let id = ''
+  try {
+    id = localStorage.getItem(DEVICE_STORAGE_KEY) || ''
+  } catch {
+    id = ''
+  }
+  if (!id) {
+    id = readCookie(DEVICE_COOKIE_NAME)
+  }
+  if (!id) {
+    id = generateUUID()
+  }
+  try {
+    localStorage.setItem(DEVICE_STORAGE_KEY, id)
+  } catch {
+    // Ignore
+  }
+  writeCookie(DEVICE_COOKIE_NAME, id)
+  return id
+}
 
 /**
  * Generates a RFC 4122 v4 UUID safely even over non-HTTPS LAN IPs
@@ -41,10 +86,11 @@ function saveSession(session) {
   return session
 }
 
-export function startNewSession() {
+export function startNewSession(options = {}) {
   const session = {
     sessionId: generateUUID(),
     createdAt: new Date().toISOString(),
+    funMode: Boolean(options.funMode),
     lastResult: null,
     claimCode: null,
     claimed: false,
@@ -52,6 +98,25 @@ export function startNewSession() {
     finalViewLogged: false,
   }
   return saveSession(session)
+}
+
+/**
+ * Reuses the active unclaimed session if it matches `funMode` (prevents Start -> Back -> Start
+ * from minting duplicate sessions). Starts a new session only on first play, after a claim,
+ * or when switching between Prize Play and Play-for-Fun.
+ */
+export function getOrStartSession(options = {}) {
+  const wantFun = Boolean(options.funMode)
+  const existing = getSession()
+  if (
+    existing &&
+    existing.sessionId &&
+    !existing.claimed &&
+    Boolean(existing.funMode) === wantFun
+  ) {
+    return { session: existing, isNew: false }
+  }
+  return { session: startNewSession({ funMode: wantFun }), isNew: true }
 }
 
 export function ensureActiveSession() {

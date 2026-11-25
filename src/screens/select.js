@@ -3,6 +3,7 @@ import { t } from '../i18n.js'
 import { UI_SVGS } from '../icons.js'
 import {
   ensureActiveSession,
+  getDeviceId,
   evaluateScore,
   getQuizMaxScore,
   getActiveMemorySymbols,
@@ -105,6 +106,8 @@ export function mountSelectScreen(container) {
         const gameId = card.dataset.game
         saveRecord({
           sessionId: session.sessionId,
+          deviceId: getDeviceId(),
+          funMode: Boolean(session.funMode),
           eventType: 'game_picked',
           gameId,
         })

@@ -65,6 +65,9 @@ export const config = {
   rules: {
     // Players win when (score / maxScore) >= passMark. Default: 0.8 (80%).
     passMark: 0.8,
+    // Limit to 1 prize per phone/device (with Staff PIN override for shared family phones).
+    // Set to false if families should freely replay for new prizes without staff unlock.
+    onePrizePerDevice: true,
     // Nature-themed prefixes for 4–6 char booth claim codes (e.g. OAK-42).
     claimCodePrefixes: ['OAK', 'FERN', 'PINE', 'OWL', 'MOSS', 'LEAF'],
   },
@@ -292,7 +295,21 @@ export const config = {
       redeemCancelBtn: 'Cancel',
       redeemWrongPin: 'Incorrect staff PIN. Please try again.',
       redeemAlreadyClaimed: 'This code was already claimed!',
+      redeemDeviceBlocked: 'This phone has already claimed its prize.',
       redeemError: 'Could not reach server. Please check Wi-Fi and try again.',
+
+      // Device Lock, Play-for-Fun & Staff Family-Pass Override
+      deviceClaimedBanner: 'Prize already claimed on this phone ({code}). You can still play for fun!',
+      playForFunBtn: 'Play for Fun',
+      funModeBadge: 'Great Score!',
+      funModeNotice: 'A prize was already claimed on this phone ({code}). Thanks for playing for fun!',
+      funModePlayAgainBtn: 'Play Again (For Fun)',
+      staffUnlockFamilyBtn: 'Staff: Unlock for Next Family Member',
+      staffUnlockTitle: 'Staff Family-Pass Unlock',
+      staffUnlockSubtitle: 'Enter the 4-digit staff PIN to allow one more prize on this shared phone.',
+      staffUnlockConfirmBtn: 'Unlock Phone',
+      repeatIpWarning:
+        'Staff alert: {count} prize(s) already claimed from this phone/network IP today (possible Private/Incognito replay or shared phone).',
     },
 
     zh: {
@@ -356,7 +373,19 @@ export const config = {
       redeemCancelBtn: '取消',
       redeemWrongPin: '工作人员密码错误，请重试。',
       redeemAlreadyClaimed: '此领奖码已被领取！',
+      redeemDeviceBlocked: '此手机已领取过奖品。',
       redeemError: '无法连接服务器，请检查网络。',
+
+      deviceClaimedBanner: '此手机已领取奖品（{code}），仍可继续免费体验游戏！',
+      playForFunBtn: '继续免费玩',
+      funModeBadge: '高分达人！',
+      funModeNotice: '此手机已领取过奖品（{code}），感谢您的参与！',
+      funModePlayAgainBtn: '再玩一次（体验模式）',
+      staffUnlockFamilyBtn: '工作人员：为下一位家人解锁',
+      staffUnlockTitle: '工作人员家庭解锁',
+      staffUnlockSubtitle: '输入 4 位工作人员密码，允许共用此手机的下一位家人赢取奖品。',
+      staffUnlockConfirmBtn: '确认解锁',
+      repeatIpWarning: '工作人员提示：同一网络 IP 今日已领取 {count} 份奖品（可能为无痕模式或共用手机）。',
     },
 
     ms: {
@@ -420,7 +449,19 @@ export const config = {
       redeemCancelBtn: 'Batal',
       redeemWrongPin: 'PIN staf salah. Sila cuba lagi.',
       redeemAlreadyClaimed: 'Kod ini sudah ditebus!',
+      redeemDeviceBlocked: 'Telefon ini telah pun menebus hadiahnya.',
       redeemError: 'Tidak dapat menghubungi pelayan. Sila semak sambungan.',
+
+      deviceClaimedBanner: 'Hadiah telah ditebus di telefon ini ({code}). Anda masih boleh bermain untuk suka-suka!',
+      playForFunBtn: 'Main Suka-Suka',
+      funModeBadge: 'Markah Hebat!',
+      funModeNotice: 'Hadiah telah ditebus di telefon ini ({code}). Terima kasih kerana bermain!',
+      funModePlayAgainBtn: 'Main Semula (Suka-Suka)',
+      staffUnlockFamilyBtn: 'Staf: Buka Kunci untuk Ahli Keluarga Seterusnya',
+      staffUnlockTitle: 'Buka Kunci Kongsi Keluarga (Staf)',
+      staffUnlockSubtitle: 'Masukkan PIN staf 4 digit untuk membenarkan satu lagi hadiah di telefon ini.',
+      staffUnlockConfirmBtn: 'Buka Kunci',
+      repeatIpWarning: 'Amaran Staf: {count} hadiah telah ditebus dari IP rangkaian ini hari ini (mungkin mod Incognito atau telefon kongsi).',
     },
 
     ta: {
@@ -484,7 +525,19 @@ export const config = {
       redeemCancelBtn: 'ரத்து செய்',
       redeemWrongPin: 'தவறான PIN. மீண்டும் முயற்சிக்கவும்.',
       redeemAlreadyClaimed: 'இந்தக் குறியீடு ஏற்கனவே பயன்படுத்தப்பட்டது!',
+      redeemDeviceBlocked: 'இந்தத் தொலைபேசியில் பரிசு ஏற்கனவே வழங்கப்பட்டுவிட்டது.',
       redeemError: 'சர்வருடன் இணைக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.',
+
+      deviceClaimedBanner: 'இந்தத் தொலைபேசியில் பரிசு ஏற்கனவே பெறப்பட்டது ({code}). மகிழ்ச்சிக்காக மீண்டும் விளையாடலாம்!',
+      playForFunBtn: 'மகிழ்ச்சிக்காக விளையாடு',
+      funModeBadge: 'சிறந்த மதிப்பெண்!',
+      funModeNotice: 'இந்தத் தொலைபேசியில் பரிசு ஏற்கனவே பெறப்பட்டது ({code}). விளையாடியதற்கு நன்றி!',
+      funModePlayAgainBtn: 'மீண்டும் விளையாடு (பயிற்சி)',
+      staffUnlockFamilyBtn: 'ஊழியர்: அடுத்த குடும்ப உறுப்பினருக்குத் திற',
+      staffUnlockTitle: 'குடும்பப் பகிர்வுத் திறப்பு (ஊழியர்)',
+      staffUnlockSubtitle: 'இந்தத் தொலைபேசியில் மேலும் ஒரு பரிசை அனுமதிக்க 4 இலக்க ஊழியர் PIN-ஐ உள்ளிடவும்.',
+      staffUnlockConfirmBtn: 'திறக்கவும்',
+      repeatIpWarning: 'ஊழியர் எச்சரிக்கை: இதே IP முகவரியிலிருந்து இன்று ஏற்கனவே {count} பரிசு(கள்) வழங்கப்பட்டுள்ளன.',
     },
   },
 }

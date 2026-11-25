@@ -5,6 +5,7 @@ import { launchConfetti } from '../confetti.js'
 import {
   ensureActiveSession,
   updateSession,
+  getDeviceId,
   evaluateScore,
   getActiveMemorySymbols,
   navigate,
@@ -94,6 +95,8 @@ export function mountMemoryScreen(container) {
 
     const res = await saveRecord({
       sessionId: session.sessionId,
+      deviceId: getDeviceId(),
+      funMode: Boolean(session.funMode),
       eventType: 'game_completed',
       gameId: 'memory',
       score: summary.score,
@@ -103,9 +106,13 @@ export function mountMemoryScreen(container) {
 
     updateSession({
       lastResult: resultRecord,
-      ...(res?.claimCode ? { claimCode: res.claimCode } : {}),
-      ...(typeof res?.claimed === 'boolean' ? { claimed: res.claimed } : {}),
-      ...(res?.claimedAt ? { claimedAt: res.claimedAt } : {}),
+      claimCode: res?.claimCode || null,
+      claimed: Boolean(res?.claimed),
+      claimedAt: res?.claimedAt || null,
+      deviceLocked: Boolean(res?.deviceLocked),
+      previousClaimCode: res?.previousClaimCode || null,
+      previousClaimedAt: res?.previousClaimedAt || null,
+      ipClaimCount: Number(res?.ipClaimCount || 0),
     })
 
     finishTimeout = setTimeout(() => {

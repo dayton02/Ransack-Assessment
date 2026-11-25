@@ -144,7 +144,29 @@ export function mountAdminScreen(container) {
         quiz: { picked: 0, wins: 0, losses: 0, winRate: 0 },
         memory: { picked: 0, wins: 0, losses: 0, winRate: 0 },
       },
+      funMode: {
+        sessions: 0,
+        finalScreenViews: 0,
+        totalWins: 0,
+        totalLosses: 0,
+        overallWinRate: 0,
+        games: {
+          quiz: { picked: 0, wins: 0, losses: 0, winRate: 0 },
+          memory: { picked: 0, wins: 0, losses: 0, winRate: 0 },
+        },
+      },
       claims: [],
+    }
+    const fm = s.funMode || {
+      sessions: 0,
+      finalScreenViews: 0,
+      totalWins: 0,
+      totalLosses: 0,
+      overallWinRate: 0,
+      games: {
+        quiz: { picked: 0, wins: 0, losses: 0, winRate: 0 },
+        memory: { picked: 0, wins: 0, losses: 0, winRate: 0 },
+      },
     }
 
     const q = searchQuery.trim().toUpperCase()
@@ -165,7 +187,8 @@ export function mountAdminScreen(container) {
               <h1 class="section-title" style="margin: 6px 0 2px">Live Event Stats</h1>
               <div class="muted">
                 Storage: <strong>${escapeHtml(s.engine)}</strong> • Pass mark:
-                <strong>${Math.round((Number(config.rules.passMark) || 0.8) * 100)}%</strong>
+                <strong>${Math.round((Number(config.rules.passMark) || 0.8) * 100)}%</strong> •
+                1/Device: <strong>${s.onePrizePerDevice ? 'ON' : 'OFF'}</strong>
               </div>
             </div>
             <div class="admin-actions">
@@ -208,7 +231,9 @@ export function mountAdminScreen(container) {
         </section>
 
         <section class="card card-compact">
-          <h2 class="section-title" style="font-size: 1.15rem; margin-top: 0">Per-Game Breakdown</h2>
+          <h2 class="section-title" style="font-size: 1.15rem; margin-top: 0">
+            Prize Play — Per-Game Breakdown
+          </h2>
           <div class="game-stat-grid">
             ${[
               { key: 'quiz', label: 'Fun-Fact Quiz' },
@@ -237,6 +262,51 @@ export function mountAdminScreen(container) {
                       <div class="progress-fill" style="width: ${g.winRate}%"></div>
                     </div>
                     <div class="muted" style="font-size: 0.78rem">Win rate: ${g.winRate}%</div>
+                  </div>
+                `
+              })
+              .join('')}
+          </div>
+        </section>
+
+        <section class="card card-compact">
+          <div class="admin-header" style="margin-bottom: 10px">
+            <div>
+              <h2 class="section-title" style="font-size: 1.1rem; margin: 0">
+                Play-for-Fun Stats (Separate from Prize Play)
+              </h2>
+              <div class="muted" style="font-size: 0.8rem">
+                Replays by already-claimed devices — excluded from Prize Play counts above.
+              </div>
+            </div>
+            <span class="pill-tag">
+              ${fm.sessions} Sessions • ${fm.finalScreenViews} Final Views
+            </span>
+          </div>
+          <div class="game-stat-grid">
+            ${[
+              { key: 'quiz', label: 'Fun-Fact Quiz (Fun)' },
+              { key: 'memory', label: 'Forest Canopy Memory (Fun)' },
+            ]
+              .map(({ key, label }) => {
+                const g = fm.games?.[key] || { picked: 0, wins: 0, losses: 0, winRate: 0 }
+                return `
+                  <div class="game-stat-card" style="background: #f9fafb">
+                    <h3>${label}</h3>
+                    <div class="mini-metrics">
+                      <div class="mini-metric">
+                        <strong>${g.picked}</strong>
+                        <span>Picked</span>
+                      </div>
+                      <div class="mini-metric">
+                        <strong style="color: var(--success)">${g.wins}</strong>
+                        <span>Wins</span>
+                      </div>
+                      <div class="mini-metric">
+                        <strong style="color: var(--coral)">${g.losses}</strong>
+                        <span>Losses</span>
+                      </div>
+                    </div>
                   </div>
                 `
               })
@@ -277,7 +347,12 @@ export function mountAdminScreen(container) {
                         • ${escapeHtml(formatTimestamp(c.claimed ? c.claimedAt : c.lastActiveAt))}
                       </div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 8px">
+                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap">
+                      ${
+                        c.repeatIp
+                          ? `<span class="status-badge is-warning" title="Multiple claims from this phone/network IP">Repeat IP (${c.ipClaimCount})</span>`
+                          : ''
+                      }
                       <span class="status-badge ${c.claimed ? 'is-claimed' : 'is-unclaimed'}">
                         ${c.claimed ? 'Claimed' : 'Unclaimed'}
                       </span>

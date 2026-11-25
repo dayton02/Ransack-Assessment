@@ -1,6 +1,6 @@
 import { t } from '../i18n.js'
 import { UI_SVGS } from '../icons.js'
-import { getSession, navigate } from '../state.js'
+import { getSession, getDeviceId, navigate } from '../state.js'
 import { saveRecord } from '../api.js'
 
 function escapeHtml(str) {
@@ -65,6 +65,8 @@ export function mountResultScreen(container) {
     container.querySelector('#retry-same-btn').addEventListener('click', () => {
       saveRecord({
         sessionId: session.sessionId,
+        deviceId: getDeviceId(),
+        funMode: Boolean(session.funMode),
         eventType: 'game_picked',
         gameId: result.gameId,
       })

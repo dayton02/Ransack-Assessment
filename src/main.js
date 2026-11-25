@@ -13,7 +13,7 @@ const appRoot = document.querySelector('#app')
 appRoot.innerHTML = `
   <div class="app-shell" id="app-shell">
     <header class="top-bar" id="lang-bar-slot"></header>
-    <main id="screen-root" style="flex: 1; min-height: 0; display: flex; flex-direction: column;"></main>
+    <main id="screen-root" style="flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column;"></main>
   </div>
 `
 
@@ -55,7 +55,9 @@ function mountCurrentRoute() {
 
   shellEl.classList.toggle('is-admin', isAdmin)
   shellEl.classList.toggle('is-viewport-fit', Boolean(viewportFit))
-  document.body.classList.toggle('no-scroll', Boolean(viewportFit))
+  document.documentElement.classList.toggle('is-player-app', !isAdmin)
+  document.body.classList.toggle('is-player-app', !isAdmin)
+  screenRoot.style.overflow = isAdmin ? 'visible' : 'hidden'
   langBarSlot.style.display = isAdmin ? 'none' : ''
   if (!isAdmin) {
     renderLanguageBar(langBarSlot)

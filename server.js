@@ -34,14 +34,51 @@ function requireAdminPin(req, res, next) {
   next()
 }
 
+function getClientIp(req) {
+  const forwarded = req.headers['x-forwarded-for']
+  if (typeof forwarded === 'string' && forwarded.trim()) {
+    return forwarded.split(',')[0].trim()
+  }
+  return req.socket?.remoteAddress || req.ip || ''
+}
+
 // Health check
 app.get('/api/ping', async (req, res) => {
   const db = await getDb()
   res.json({ ok: true, engine: db.engine })
 })
 
+// Check whether a device has already claimed its prize (and whether repeat-IP applies)
+app.get('/api/devices/:deviceId', async (req, res) => {
+  try {
+    const db = await getDb()
+    const status = await db.getDeviceEligibility(req.params.deviceId, getClientIp(req))
+    res.json({ ok: true, ...status })
+  } catch (err) {
+    console.error('GET /api/devices/:deviceId failed:', err)
+    res.status(500).json({ ok: false, error: 'Failed to check device eligibility' })
+  }
+})
+
+// Staff Family-Pass Override: allow one additional prize claim on a shared family phone
+app.post('/api/devices/:deviceId/unlock', async (req, res) => {
+  try {
+    const pin = req.body?.pin || req.get('X-Admin-Pin') || ''
+    if (!isValidStaffPin(pin)) {
+      return res.status(403).json({ ok: false, error: 'Invalid staff PIN' })
+    }
+    const db = await getDb()
+    const result = await db.unlockDevice(req.params.deviceId)
+    res.status(result.status || 200).json(result)
+  } catch (err) {
+    console.error('POST /api/devices/:deviceId/unlock failed:', err)
+    res.status(500).json({ ok: false, error: 'Failed to unlock device' })
+  }
+})
+
 // Save one event record sent by the app.
-// On a winning `game_completed`, atomically generates & returns a unique Claim Code.
+// On a winning `game_completed`, atomically generates & returns a unique Claim Code
+// (unless onePrizePerDevice is enabled and this device already claimed its prize).
 app.post('/api/records', async (req, res) => {
   try {
     const record = req.body || {}
@@ -52,7 +89,7 @@ app.post('/api/records', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Invalid eventType' })
     }
     const db = await getDb()
-    const result = await db.recordEvent(record)
+    const result = await db.recordEvent(record, getClientIp(req))
     res.json(result)
   } catch (err) {
     console.error('POST /api/records failed:', err)
