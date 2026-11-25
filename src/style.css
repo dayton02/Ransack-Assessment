@@ -359,8 +359,220 @@ input {
 }
 
 /* ==========================================================================
-   Landing Screen
+   Landing Screen (Interactive Forest Mascots & Tactile Cards)
    ========================================================================== */
+.event-header-compact {
+  margin-bottom: 6px;
+}
+
+.critter-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 4px 0 8px;
+}
+
+.critter-btn {
+  width: 58px;
+  height: 58px;
+  padding: 6px;
+  border-radius: 18px;
+  border: 2.5px solid rgba(37, 93, 99, 0.2);
+  background: var(--critter-tint, #eef8dc);
+  box-shadow: 0 5px 12px rgba(25, 68, 73, 0.14);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.critter-btn svg {
+  width: 44px;
+  height: 44px;
+}
+
+.critter-btn.is-active {
+  border-color: var(--meadow-green);
+  box-shadow:
+    0 0 0 3px rgba(109, 179, 63, 0.3),
+    0 8px 16px rgba(25, 68, 73, 0.2);
+  transform: translateY(-3px) scale(1.06);
+}
+
+.critter-float-0 {
+  animation: critter-bob 3.2s ease-in-out infinite;
+}
+
+.critter-float-1 {
+  animation: critter-bob 3.2s ease-in-out 0.6s infinite;
+}
+
+.critter-float-2 {
+  animation: critter-bob 3.2s ease-in-out 1.2s infinite;
+}
+
+.critter-btn.is-bouncing {
+  animation: critter-jump 0.45s cubic-bezier(0.22, 1.35, 0.36, 1);
+}
+
+@keyframes critter-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes critter-jump {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  35% {
+    transform: translateY(-10px) scale(1.16) rotate(-7deg);
+  }
+  65% {
+    transform: translateY(-4px) scale(1.08) rotate(5deg);
+  }
+  100% {
+    transform: translateY(-3px) scale(1.06) rotate(0deg);
+  }
+}
+
+.speech-bubble {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  background: #ffffff;
+  border: 1.5px solid rgba(37, 93, 99, 0.22);
+  border-radius: 14px;
+  padding: 6px 12px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--forest-teal-dark);
+  box-shadow: 0 3px 10px rgba(25, 68, 73, 0.08);
+  margin-bottom: 2px;
+}
+
+.speech-bubble.is-popping {
+  animation: bubble-pop 0.28s ease;
+}
+
+@keyframes bubble-pop {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.live-counter-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 4px auto 2px;
+  padding: 4px 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(109, 179, 63, 0.15);
+  color: var(--forest-teal-dark);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--meadow-green);
+  box-shadow: 0 0 0 3px rgba(109, 179, 63, 0.28);
+  animation: pulse-dot 1.8s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.28);
+    opacity: 0.7;
+  }
+}
+
+.step-chip-btn {
+  cursor: pointer;
+  transition:
+    transform 0.14s ease,
+    border-color 0.16s ease,
+    background-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.step-chip-btn:active {
+  transform: scale(0.96);
+}
+
+.step-chip-btn.is-active {
+  background: #ffffff;
+  border-color: var(--meadow-green);
+  box-shadow: 0 4px 12px rgba(109, 179, 63, 0.24);
+  transform: translateY(-2px);
+}
+
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -70%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    110deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.28) 50%,
+    transparent 100%
+  );
+  animation: cta-shine 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes cta-shine {
+  0%,
+  65% {
+    left: -70%;
+  }
+  100% {
+    left: 130%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .critter-float-0,
+  .critter-float-1,
+  .critter-float-2,
+  .live-dot,
+  .btn-shimmer::after {
+    animation: none;
+  }
+}
+
 .hero-icon-wrap {
   width: 50px;
   height: 50px;

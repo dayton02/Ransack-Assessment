@@ -89,20 +89,31 @@ export function getEventText(field, lang = currentLang) {
 /**
  * Resolve a quiz question's text & options for the active language.
  * Falls back cleanly to the plain starter format (`question`, `options`).
+ * If `rawQuestion.optionOrder` is attached (from `shuffleOptions`), reorders
+ * options and remaps `answerIndex` consistently across all languages.
  */
 export function getLocalizedQuestion(rawQuestion, lang = currentLang) {
   const defaultLang = config.languages.defaultLanguage || 'en'
   const tr = lang !== defaultLang ? rawQuestion.translations?.[lang] : null
   const question = tr?.question || rawQuestion.question
-  const options =
+  const baseOptions =
     Array.isArray(tr?.options) && tr.options.length === rawQuestion.options.length
       ? tr.options
       : rawQuestion.options
+
+  const order =
+    Array.isArray(rawQuestion.optionOrder) && rawQuestion.optionOrder.length === baseOptions.length
+      ? rawQuestion.optionOrder
+      : baseOptions.map((_, i) => i)
+
+  const options = order.map((origIdx) => baseOptions[origIdx])
+  const answerIndex = order.indexOf(rawQuestion.answerIndex)
+
   return {
     id: rawQuestion.id,
     question,
     options,
-    answerIndex: rawQuestion.answerIndex,
+    answerIndex: answerIndex >= 0 ? answerIndex : rawQuestion.answerIndex,
   }
 }
 

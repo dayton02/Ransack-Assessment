@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "start": "concurrently -k -n server,app \"node server.js\" \"vite --host\"",
+    "start": "concurrently -k -n server,app \"node --watch server.js\" \"vite --host\"",
     "dev": "npm start",
     "build": "vite build",
     "preview": "vite preview"

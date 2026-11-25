@@ -69,6 +69,19 @@ export async function getSessionStatus(sessionId) {
 }
 
 /**
+ * Fetch lightweight public community stats (total players / winners) for the Landing Screen.
+ */
+export async function getPublicSummary() {
+  try {
+    const res = await requestJson('/api/public/summary', { method: 'GET' })
+    if (!res.ok || !res.data?.ok) return null
+    return res.data
+  } catch {
+    return null
+  }
+}
+
+/**
  * Check whether this phone/device has already claimed its prize.
  */
 export async function getDeviceEligibility(deviceId) {

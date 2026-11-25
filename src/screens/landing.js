@@ -1,8 +1,14 @@
 import { config } from '../config.js'
 import { t, getEventText } from '../i18n.js'
-import { UI_SVGS } from '../icons.js'
+import { getSymbolSvg } from '../icons.js'
+import { launchConfetti } from '../confetti.js'
 import { getOrStartSession, getDeviceId, navigate } from '../state.js'
-import { saveRecord, getDeviceEligibility, unlockDeviceForFamily } from '../api.js'
+import {
+  saveRecord,
+  getDeviceEligibility,
+  getPublicSummary,
+  unlockDeviceForFamily,
+} from '../api.js'
 
 function escapeHtml(str) {
   return String(str ?? '')
@@ -11,6 +17,12 @@ function escapeHtml(str) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
 }
+
+const CRITTERS = [
+  { id: 'owl', tint: '#e0e7ff', msgKey: 'critterOwlMsg', stepIndex: 0 },
+  { id: 'fox', tint: '#ffedd5', msgKey: 'critterFoxMsg', stepIndex: 1 },
+  { id: 'butterfly', tint: '#e0f2fe', msgKey: 'critterButterflyMsg', stepIndex: 2 },
+]
 
 export function mountLandingScreen(container) {
   let tapCount = 0
@@ -23,19 +35,76 @@ export function mountLandingScreen(container) {
     lastClaimCode: null,
     lastClaimedAt: null,
   }
+  let livePlayers = null
+  let activeCritterIndex = -1 // -1 = initial hint
+  const pokedCritters = new Set()
+  let easterEggTriggered = false
+
   let unlockModalOpen = false
   let unlockError = ''
   let unlocking = false
 
-  getDeviceEligibility(deviceId).then((res) => {
-    if (destroyed || !res) return
-    deviceStatus = {
-      locked: Boolean(res.locked),
-      lastClaimCode: res.lastClaimCode || null,
-      lastClaimedAt: res.lastClaimedAt || null,
+  // Fetch device claim eligibility & live community counter in parallel
+  Promise.all([getDeviceEligibility(deviceId), getPublicSummary()]).then(([elig, summary]) => {
+    if (destroyed) return
+    let changed = false
+    if (elig) {
+      deviceStatus = {
+        locked: Boolean(elig.locked),
+        lastClaimCode: elig.lastClaimCode || null,
+        lastClaimedAt: elig.lastClaimedAt || null,
+      }
+      changed = true
     }
-    render()
+    if (summary && typeof summary.totalPlayers === 'number') {
+      livePlayers = summary.totalPlayers
+      changed = true
+    }
+    if (changed) render()
   })
+
+  function getSpeechText() {
+    const passPercent = Math.round((Number(config.rules.passMark) || 0.8) * 100)
+    if (activeCritterIndex < 0 || activeCritterIndex >= CRITTERS.length) {
+      return t('tapCritterHint')
+    }
+    const critter = CRITTERS[activeCritterIndex]
+    return t(critter.msgKey, { passPercent })
+  }
+
+  function updateInteractiveHighlight(index, fromCritterTap = false) {
+    activeCritterIndex = index
+    const bubble = container.querySelector('#critter-bubble')
+    if (bubble) {
+      bubble.textContent = getSpeechText()
+      bubble.classList.remove('is-popping')
+      void bubble.offsetWidth
+      bubble.classList.add('is-popping')
+    }
+
+    container.querySelectorAll('.critter-btn').forEach((btn, idx) => {
+      const isSelected = idx === index
+      btn.classList.toggle('is-active', isSelected)
+      btn.setAttribute('aria-pressed', isSelected ? 'true' : 'false')
+      if (isSelected && fromCritterTap) {
+        btn.classList.remove('is-bouncing')
+        void btn.offsetWidth
+        btn.classList.add('is-bouncing')
+      }
+    })
+
+    container.querySelectorAll('.step-chip-btn').forEach((chip, idx) => {
+      chip.classList.toggle('is-active', idx === index)
+    })
+
+    if (fromCritterTap) {
+      pokedCritters.add(index)
+      if (pokedCritters.size === CRITTERS.length && !easterEggTriggered) {
+        easterEggTriggered = true
+        launchConfetti(1400)
+      }
+    }
+  }
 
   function render() {
     if (destroyed) return
@@ -43,16 +112,48 @@ export function mountLandingScreen(container) {
     const clientName = escapeHtml(getEventText('clientName'))
     const eventName = escapeHtml(getEventText('eventName'))
     const appTitle = escapeHtml(getEventText('appTitle'))
-    const tagline = escapeHtml(getEventText('tagline'))
+    const liveText =
+      livePlayers === null
+        ? t('familyNote')
+        : livePlayers > 0
+          ? t('livePlayersCount', { count: livePlayers })
+          : t('livePlayersFirst')
 
     container.innerHTML = `
       <div class="screen-body">
-        <section class="card text-center">
-          <div class="hero-icon-wrap">${UI_SVGS.tree}</div>
-          <p class="event-club">${clientName}</p>
-          <p class="event-name">${eventName}</p>
-          <h1 class="hero-title">${appTitle}</h1>
-          <p class="lead">${tagline}</p>
+        <section class="card text-center landing-card">
+          <div class="event-header-compact">
+            <p class="event-club">${clientName}</p>
+            <p class="event-name">${eventName}</p>
+          </div>
+
+          <div class="critter-stage" role="group" aria-label="Interactive forest friends">
+            ${CRITTERS.map(
+              (c, idx) => `
+              <button
+                type="button"
+                class="critter-btn critter-float-${idx} ${activeCritterIndex === idx ? 'is-active' : ''}"
+                style="--critter-tint: ${c.tint}"
+                data-critter="${idx}"
+                aria-pressed="${activeCritterIndex === idx ? 'true' : 'false'}"
+                aria-label="${c.id}"
+              >
+                ${getSymbolSvg(c.id)}
+              </button>
+            `,
+            ).join('')}
+          </div>
+
+          <div class="speech-bubble" id="critter-bubble" role="status" aria-live="polite">
+            ${escapeHtml(getSpeechText())}
+          </div>
+
+          <h1 class="hero-title" style="margin-top: 6px">${appTitle}</h1>
+
+          <div class="live-counter-pill">
+            <span class="live-dot" aria-hidden="true"></span>
+            <span>${escapeHtml(liveText)}</span>
+          </div>
 
           ${
             deviceStatus.locked
@@ -67,42 +168,40 @@ export function mountLandingScreen(container) {
           `
               : `
             <div class="steps-grid">
-              <div class="step-chip">
+              <button type="button" class="step-chip step-chip-btn ${activeCritterIndex === 0 ? 'is-active' : ''}" data-step="0">
                 <div class="step-num">1</div>
                 <div class="step-title">${escapeHtml(t('step1Title'))}</div>
                 <div class="step-desc">${escapeHtml(t('step1Desc'))}</div>
-              </div>
-              <div class="step-chip">
+              </button>
+              <button type="button" class="step-chip step-chip-btn ${activeCritterIndex === 1 ? 'is-active' : ''}" data-step="1">
                 <div class="step-num">2</div>
                 <div class="step-title">${escapeHtml(t('step2Title', { passPercent }))}</div>
                 <div class="step-desc">${escapeHtml(t('step2Desc'))}</div>
-              </div>
-              <div class="step-chip">
+              </button>
+              <button type="button" class="step-chip step-chip-btn ${activeCritterIndex === 2 ? 'is-active' : ''}" data-step="2">
                 <div class="step-num">3</div>
                 <div class="step-title">${escapeHtml(t('step3Title'))}</div>
                 <div class="step-desc">${escapeHtml(t('step3Desc'))}</div>
-              </div>
+              </button>
             </div>
           `
           }
 
-          <div class="btn-stack" style="margin-top: 14px">
-            <button type="button" id="start-btn" class="btn btn-primary">
-              ${escapeHtml(deviceStatus.locked ? t('playForFunBtn') : t('startButton'))}
+          <div class="btn-stack" style="margin-top: 10px">
+            <button type="button" id="start-btn" class="btn btn-primary btn-shimmer">
+              ${escapeHtml(deviceStatus.locked ? t('playForFunBtn') : t('startButton'))} →
             </button>
 
             ${
               deviceStatus.locked
                 ? `
-              <button type="button" id="open-family-unlock-btn" class="btn btn-secondary" style="min-height: 46px; font-size: 0.92rem">
+              <button type="button" id="open-family-unlock-btn" class="btn btn-secondary" style="min-height: 44px; font-size: 0.88rem">
                 ${escapeHtml(t('staffUnlockFamilyBtn'))}
               </button>
             `
                 : ''
             }
           </div>
-
-          <p class="muted" style="margin: 12px 0 0">${escapeHtml(t('familyNote'))}</p>
         </section>
 
         <footer class="landing-footer">
@@ -152,6 +251,18 @@ export function mountLandingScreen(container) {
           : ''
       }
     `
+
+    container.querySelectorAll('.critter-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        updateInteractiveHighlight(Number(btn.dataset.critter), true)
+      })
+    })
+
+    container.querySelectorAll('.step-chip-btn').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        updateInteractiveHighlight(Number(chip.dataset.step), true)
+      })
+    })
 
     const startBtn = container.querySelector('#start-btn')
     startBtn.addEventListener('click', () => {

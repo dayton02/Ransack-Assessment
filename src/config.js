@@ -78,10 +78,13 @@ export const config = {
   quiz: {
     id: 'quiz',
     pointsPerCorrect: 1,
-    // Set to a number (e.g. 5) to limit questions per round, or null for all.
+    // Set to a number (e.g. 5) to draw a random subset per round from a larger bank,
+    // or null to play all questions in the bank.
     questionLimit: null,
-    // Set to true to shuffle question order each round.
-    shuffleQuestions: false,
+    // Shuffle the full question bank each round (prioritising unseen questions on retries).
+    shuffleQuestions: true,
+    // Shuffle the answer options for every question while preserving the correct answer.
+    shuffleOptions: true,
     // Questions can have ANY number of options. `answerIndex` starts from 0.
     // `translations` is optional — any new question without it works in all languages!
     questions: [
@@ -237,6 +240,12 @@ export const config = {
       step3Desc: 'Show staff your code',
       startButton: 'Start Playing',
       familyNote: 'Fun for kids, parents & grandparents!',
+      tapCritterHint: 'Tap a forest friend to say hi!',
+      critterFoxMsg: 'Hi! Ready to match forest pairs in 45 seconds?',
+      critterOwlMsg: 'Hoo-hoo! Can you ace our Fun-Fact Quiz?',
+      critterButterflyMsg: 'Score {passPercent}% or more to unlock a real prize!',
+      livePlayersCount: '{count} players joined FunFest today!',
+      livePlayersFirst: 'Be the first to play at FunFest today!',
 
       // Game Select
       selectHeading: 'Choose Your Game',
@@ -321,6 +330,12 @@ export const config = {
       step3Desc: '出示领奖码兑换',
       startButton: '开始游戏',
       familyNote: '老少皆宜，全家一起玩！',
+      tapCritterHint: '点一点森林小伙伴打个招呼吧！',
+      critterFoxMsg: '嗨！准备好在 45 秒内配对森林卡牌了吗？',
+      critterOwlMsg: '咕咕！快来挑战趣味知识问答吧！',
+      critterButterflyMsg: '得分达到 {passPercent}% 就能兑换精美奖品哦！',
+      livePlayersCount: '今天已有 {count} 位居民参与活动！',
+      livePlayersFirst: '快来成为今天第一位挑战者吧！',
 
       selectHeading: '选择一款游戏',
       selectSubheading: '得分达到 {passPercent}% 即可赢取奖品！',
@@ -397,6 +412,12 @@ export const config = {
       step3Desc: 'Tunjuk kod kepada staf',
       startButton: 'Mula Bermain',
       familyNote: 'Seronok untuk kanak-kanak, ibu bapa & datuk nenek!',
+      tapCritterHint: 'Ketik rakan rimba untuk menyapa!',
+      critterFoxMsg: 'Hai! Sedia padankan pasangan rimba dalam 45 saat?',
+      critterOwlMsg: 'Huu-huu! Jom uji minda dengan Kuiz Fakta Menarik!',
+      critterButterflyMsg: 'Capai {passPercent}% ke atas untuk menebus hadiah!',
+      livePlayersCount: '{count} pemain telah menyertai FunFest hari ini!',
+      livePlayersFirst: 'Jadilah pemain pertama FunFest hari ini!',
 
       selectHeading: 'Pilih Permainan Anda',
       selectSubheading: 'Capai sekurang-kurangnya {passPercent}% untuk menang hadiah!',
@@ -473,6 +494,12 @@ export const config = {
       step3Desc: 'ஊழியரிடம் குறியீட்டைக் காட்டுங்கள்',
       startButton: 'விளையாடத் தொடங்கு',
       familyNote: 'குழந்தைகள் முதல் தாத்தா பாட்டி வரை அனைவருக்கும்!',
+      tapCritterHint: 'காட்டு நண்பர்களைத் தொட்டுப் பாருங்கள்!',
+      critterFoxMsg: 'வணக்கம்! 45 வினாடிகளில் ஜோடிகளைப் பொருத்தத் தயாரா?',
+      critterOwlMsg: 'சுவாரசிய வினாடி வினாவில் வெற்றி பெறத் தயாரா?',
+      critterButterflyMsg: '{passPercent}%+ மதிப்பெண் பெற்று பரிசு வெல்லுங்கள்!',
+      livePlayersCount: 'இன்று {count} பேர் FunFest-ல் விளையாடியுள்ளனர்!',
+      livePlayersFirst: 'இன்று முதலில் விளையாடுபவராக இருங்கள்!',
 
       selectHeading: 'விளையாட்டைத் தேர்ந்தெடுங்கள்',
       selectSubheading: 'பரிசு வெல்ல குறைந்தது {passPercent}% மதிப்பெண் பெறுங்கள்!',

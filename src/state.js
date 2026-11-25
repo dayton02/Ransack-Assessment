@@ -180,22 +180,77 @@ export function evaluateScore(score, maxScore) {
   }
 }
 
+const LAST_QUIZ_IDS_KEY = 'play_and_win_last_quiz_ids'
+
+function shuffleArray(items) {
+  const arr = [...items]
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  }
+  return arr
+}
+
+function getLastQuizQuestionIds() {
+  try {
+    const raw = sessionStorage.getItem(LAST_QUIZ_IDS_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? new Set(parsed) : new Set()
+  } catch {
+    return new Set()
+  }
+}
+
+function saveLastQuizQuestionIds(ids) {
+  try {
+    sessionStorage.setItem(LAST_QUIZ_IDS_KEY, JSON.stringify(ids))
+  } catch {
+    // Ignore storage errors
+  }
+}
+
 /**
- * Compute effective quiz questions based on `config.quiz`.
+ * Compute active quiz questions based on `config.quiz`.
+ * - Shuffles the full question bank when `shuffleQuestions` is true.
+ * - If the bank is larger than `questionLimit`, prioritises unseen questions from
+ *   the bank before repeating ones from the previous round for high replayability.
+ * - Attaches a per-question `optionOrder` permutation when `shuffleOptions` is true
+ *   so answer options are randomised while staying aligned across language switches.
  */
 export function getActiveQuizQuestions() {
-  const all = Array.isArray(config.quiz.questions) ? [...config.quiz.questions] : []
-  if (config.quiz.shuffleQuestions) {
-    for (let i = all.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1))
-      ;[all[i], all[j]] = [all[j], all[i]]
-    }
-  }
+  const all = Array.isArray(config.quiz.questions)
+    ? config.quiz.questions.map((q, idx) => ({ ...q, _bankKey: q.id ?? idx }))
+    : []
+
   const limit = Number(config.quiz.questionLimit)
-  if (Number.isFinite(limit) && limit > 0) {
-    return all.slice(0, Math.min(limit, all.length))
+  const effectiveCount =
+    Number.isFinite(limit) && limit > 0 ? Math.min(limit, all.length) : all.length
+
+  let selected
+  if (config.quiz.shuffleQuestions) {
+    if (effectiveCount < all.length) {
+      // Larger question bank than round limit: prioritise unseen questions first
+      const lastSeen = getLastQuizQuestionIds()
+      const unseen = shuffleArray(all.filter((q) => !lastSeen.has(q._bankKey)))
+      const seen = shuffleArray(all.filter((q) => lastSeen.has(q._bankKey)))
+      selected = shuffleArray([...unseen, ...seen].slice(0, effectiveCount))
+    } else {
+      selected = shuffleArray(all)
+    }
+  } else {
+    selected = all.slice(0, effectiveCount)
   }
-  return all
+
+  saveLastQuizQuestionIds(selected.map((q) => q._bankKey))
+
+  return selected.map((q) => {
+    const indices = Array.from({ length: (q.options || []).length }, (_, i) => i)
+    const optionOrder = config.quiz.shuffleOptions ? shuffleArray(indices) : indices
+    return {
+      ...q,
+      optionOrder,
+    }
+  })
 }
 
 export function getQuizMaxScore() {

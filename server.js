@@ -48,6 +48,22 @@ app.get('/api/ping', async (req, res) => {
   res.json({ ok: true, engine: db.engine })
 })
 
+// Lightweight public community summary for the interactive Landing Screen (no sensitive data)
+app.get('/api/public/summary', async (req, res) => {
+  try {
+    const db = await getDb()
+    const stats = await db.getAdminStats()
+    res.json({
+      ok: true,
+      totalPlayers: stats.totalPlayers,
+      prizesWon: stats.prizesWon,
+    })
+  } catch (err) {
+    console.error('GET /api/public/summary failed:', err)
+    res.status(500).json({ ok: false, error: 'Failed to load summary' })
+  }
+})
+
 // Check whether a device has already claimed its prize (and whether repeat-IP applies)
 app.get('/api/devices/:deviceId', async (req, res) => {
   try {
