@@ -76,6 +76,7 @@ export function mountFinalScreen(container) {
       const saved = await saveRecord({
         sessionId: state.sessionId,
         deviceId,
+        funMode: Boolean(initialSession.funMode || state.deviceLocked),
         eventType: 'game_completed',
         gameId: state.gameId,
         score: state.score,

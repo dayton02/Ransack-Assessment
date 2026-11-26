@@ -65,7 +65,8 @@ export function mountAdminScreen(container) {
     clearInterval(refreshTimer)
     const interval = Number(config.admin.autoRefreshMs) || 10000
     refreshTimer = setInterval(() => {
-      if (unlocked && !destroyed) {
+      const typingInSearch = document.activeElement?.id === 'claim-search-input'
+      if (unlocked && !destroyed && !typingInSearch) {
         loadStats()
       }
     }, interval)
@@ -415,8 +416,12 @@ export function mountAdminScreen(container) {
       btn.addEventListener('click', async () => {
         const code = btn.dataset.redeemCode
         btn.disabled = true
-        await redeemClaimCode(code, pin)
+        const res = await redeemClaimCode(code, pin)
         await loadStats()
+        if (!res.ok && !destroyed) {
+          errorMsg = res.error || 'Could not redeem that claim code.'
+          render()
+        }
       })
     })
   }

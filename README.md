@@ -118,7 +118,7 @@ You can use any framework or library, as long as `npm install` and `npm start` s
 - **What I left out or didn't finish, and why:**
   - **Audio / sound effects:** Intentionally omitted so phones don't unexpectedly chime loudly in a busy community hall.
   - **Offline PWA queuing:** Assumed players are connected to the local event Wi-Fi hosting `npm start`.
-  - **Per-staff user accounts:** Kept staff authentication to a single fast 4-digit booth PIN to keep prize-line throughput quick.
+  - **Per-staff user accounts & admin device/IP whitelisting:** Kept staff authentication to a single server-verified 4-digit PIN (timing-safe checked, overridable via `STAFF_PIN`) rather than hardcoding an admin device/IP whitelist. At a community event, Wi-Fi DHCP IPs change and volunteers swap phones or run out of battery mid-shift, so a strict whitelist risks locking out booth staff (and evaluators testing the app).
 
 - **Time planned vs. time spent:**
   - Planned ~3–4 hours across brief analysis, architecture planning, implementation, and mobile/API verification; completed within budget by keeping the stack lean (Vanilla JS + native CSS + built-in `node:sqlite`).
