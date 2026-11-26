@@ -164,6 +164,8 @@ export const config = {
     id: 'memory',
     // Must stay under 60 seconds per brief. Default: 45s.
     timeLimitSeconds: 45,
+    // Brief face-up "Quick Peek" at the start (seconds). Set to 0 to start face-down.
+    previewSeconds: 2,
     // Number of pairs on the board (2 to 8 supported automatically). Default: 6 (3x4 = 12 cards).
     pairCount: 6,
     // Points awarded per matched pair. Fixed max score = pairCount * pointsPerPair (600).
@@ -270,6 +272,10 @@ export const config = {
 
       // Memory Match
       memoryHint: 'Tap two cards to find matching forest pairs!',
+      memoryPeekBanner: 'Quick peek! Remember the pairs ({seconds}s)...',
+      memoryMatchBanner: 'Nice match! +{points} pts!',
+      memoryStreakBanner: '{streak}x Streak! +{points} pts!',
+      memoryWinUnlocked: 'Target reached! Clear the rest!',
       timeLeft: 'Time',
       pairsLabel: 'Pairs',
       forestMasterBanner: 'Forest Master! All pairs cleared!',
@@ -357,6 +363,10 @@ export const config = {
       seeResult: '查看成绩',
 
       memoryHint: '翻开两张卡牌，找出相同的森林图案！',
+      memoryPeekBanner: '快记住卡牌位置！（{seconds}秒）',
+      memoryMatchBanner: '配对成功！+{points} 分！',
+      memoryStreakBanner: '{streak} 连击！+{points} 分！',
+      memoryWinUnlocked: '已达过关分数！继续清空卡牌！',
       timeLeft: '时间',
       pairsLabel: '配对',
       forestMasterBanner: '森林大师！全部配对完成！',
@@ -439,6 +449,10 @@ export const config = {
       seeResult: 'Lihat Markah',
 
       memoryHint: 'Ketik dua kad untuk mencari pasangan rimba yang sama!',
+      memoryPeekBanner: 'Intai sekejap! Ingat kedudukan kad ({seconds}s)...',
+      memoryMatchBanner: 'Padanan tepat! +{points} mata!',
+      memoryStreakBanner: 'Rentetan {streak}x! +{points} mata!',
+      memoryWinUnlocked: 'Sasaran tercapai! Habiskan semua kad!',
       timeLeft: 'Masa',
       pairsLabel: 'Pasangan',
       forestMasterBanner: 'Juara Rimba! Semua pasangan berjaya dipadankan!',
@@ -521,6 +535,10 @@ export const config = {
       seeResult: 'மதிப்பெண்ணைப் பார்',
 
       memoryHint: 'ஒரே மாதிரியான காட்டு அட்டைகளைத் திறந்து பொருத்துங்கள்!',
+      memoryPeekBanner: 'வேகமாகப் பாருங்கள்! இடங்களை நினைவில் வையுங்கள் ({seconds}வி)...',
+      memoryMatchBanner: 'சரியான ஜோடி! +{points} புள்ளிகள்!',
+      memoryStreakBanner: '{streak}x தொடர் வெற்றி! +{points} புள்ளிகள்!',
+      memoryWinUnlocked: 'இலக்கை அடைந்தீர்கள்! மீதமுள்ளவற்றை முடியுங்கள்!',
       timeLeft: 'நேரம்',
       pairsLabel: 'ஜோடிகள்',
       forestMasterBanner: 'காட்டின் சாதனையாளர்! அனைத்து ஜோடிகளும் பொருந்தின!',

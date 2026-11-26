@@ -35,6 +35,16 @@ function getGridLayout(cardCount) {
   return { colsClass: `cols-${cols}`, rows }
 }
 
+function buzz(pattern) {
+  try {
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      navigator.vibrate(pattern)
+    }
+  } catch {
+    // Ignore on unsupported browsers
+  }
+}
+
 export function mountMemoryScreen(container) {
   const session = ensureActiveSession()
   const symbols = getActiveMemorySymbols()
@@ -42,10 +52,10 @@ export function mountMemoryScreen(container) {
   const pointsPerPair = Number(config.memory.pointsPerPair) || 100
   const maxScore = totalPairs * pointsPerPair
   const timeLimitSeconds = Math.min(59, Math.max(5, Number(config.memory.timeLimitSeconds) || 45))
+  const previewSeconds = Math.max(0, Math.min(5, Number(config.memory.previewSeconds ?? 2)))
   const mismatchDelayMs = Number(config.memory.mismatchDelayMs) || 750
   const { needed } = evaluateScore(0, maxScore)
 
-  // Build deck: 2 cards per symbol, shuffled
   const deck = shuffle(
     symbols.flatMap((sym) => [
       { uid: `${sym.id}-a`, symbolId: sym.id, symbol: sym, flipped: false, matched: false },
@@ -54,22 +64,40 @@ export function mountMemoryScreen(container) {
   )
 
   let timeLeft = timeLimitSeconds
+  let peekRemaining = previewSeconds
+  let inPreview = previewSeconds > 0
   let matchedPairs = 0
   let score = 0
+  let streak = 0
   let openIndices = []
-  let boardLocked = false
+  let boardLocked = inPreview
   let finished = false
-  let endBannerType = null // 'master' | 'timeout' | null
+  let bannerState = inPreview ? { type: 'peek' } : { type: 'hint' }
 
   let timerId = null
+  let peekInterval = null
   let mismatchTimeout = null
   let finishTimeout = null
 
   function clearTimers() {
     clearInterval(timerId)
+    clearInterval(peekInterval)
     clearTimeout(mismatchTimeout)
     clearTimeout(finishTimeout)
     timerId = null
+    peekInterval = null
+  }
+
+  function startCountdown() {
+    if (timerId || finished) return
+    timerId = setInterval(() => {
+      if (finished) return
+      timeLeft = Math.max(0, timeLeft - 1)
+      updateHudValues()
+      if (timeLeft <= 0) {
+        completeGame(false)
+      }
+    }, 1000)
   }
 
   async function completeGame(clearedEarly) {
@@ -77,12 +105,14 @@ export function mountMemoryScreen(container) {
     finished = true
     boardLocked = true
     clearInterval(timerId)
+    clearInterval(peekInterval)
     clearTimeout(mismatchTimeout)
 
-    endBannerType = clearedEarly ? 'master' : 'timeout'
-    updateBanner()
+    bannerState = { type: clearedEarly ? 'master' : 'timeout' }
+    updateBanner(true)
 
     if (clearedEarly) {
+      buzz([30, 40, 60])
       launchConfetti(1800)
     }
 
@@ -124,24 +154,87 @@ export function mountMemoryScreen(container) {
     const timerEl = container.querySelector('#mem-timer')
     const scoreEl = container.querySelector('#mem-score')
     const pairsEl = container.querySelector('#mem-pairs')
+    const barEl = container.querySelector('#mem-timer-fill')
+    const targetTag = container.querySelector('#mem-target-tag')
+
+    const ratio = timeLimitSeconds > 0 ? timeLeft / timeLimitSeconds : 0
     if (timerEl) {
       timerEl.textContent = `${timeLeft}s`
-      timerEl.classList.toggle('is-urgent', timeLeft <= 10 && !finished)
+      timerEl.classList.toggle('is-urgent', !inPreview && timeLeft <= 10 && !finished)
     }
-    if (scoreEl) scoreEl.textContent = `${score}`
+    if (barEl) {
+      barEl.style.width = `${Math.max(0, Math.min(100, ratio * 100))}%`
+      barEl.classList.toggle('is-warn', ratio <= 0.35 && ratio > 0.2)
+      barEl.classList.toggle('is-urgent', ratio <= 0.2)
+    }
+    if (scoreEl) {
+      scoreEl.textContent = `${score}`
+      scoreEl.classList.toggle('is-winning', score >= needed)
+    }
     if (pairsEl) pairsEl.textContent = `${matchedPairs}/${totalPairs}`
+    if (targetTag) {
+      targetTag.classList.toggle('is-reached', score >= needed)
+    }
   }
 
-  function updateBanner() {
-    const slot = container.querySelector('#mem-banner-slot')
-    if (!slot) return
-    if (endBannerType === 'master') {
-      slot.innerHTML = `<div class="memory-banner is-master" role="status">${escapeHtml(t('forestMasterBanner'))}</div>`
-    } else if (endBannerType === 'timeout') {
-      slot.innerHTML = `<div class="memory-banner" role="status">${escapeHtml(t('timesUpBanner'))}</div>`
-    } else {
-      slot.innerHTML = `<p class="memory-hint">${escapeHtml(t('memoryHint'))}</p>`
+  function getBannerText() {
+    switch (bannerState.type) {
+      case 'peek':
+        return t('memoryPeekBanner', { seconds: peekRemaining })
+      case 'master':
+        return t('forestMasterBanner')
+      case 'timeout':
+        return t('timesUpBanner')
+      case 'win_unlocked':
+        return t('memoryWinUnlocked')
+      case 'streak':
+        return t('memoryStreakBanner', { streak: bannerState.streak, points: pointsPerPair })
+      case 'match':
+        return t('memoryMatchBanner', { points: pointsPerPair })
+      default:
+        return t('memoryHint')
     }
+  }
+
+  function updateBanner(animate = false) {
+    const bubbleEl = container.querySelector('#mem-fox-bubble')
+    const avatarEl = container.querySelector('#mem-fox-avatar')
+    if (!bubbleEl || !avatarEl) return
+
+    bubbleEl.textContent = getBannerText()
+    bubbleEl.classList.remove('is-match', 'is-master', 'is-timeout', 'is-peek', 'is-popping')
+    avatarEl.classList.remove('is-happy', 'is-peek')
+
+    if (bannerState.type === 'master') {
+      bubbleEl.classList.add('is-master')
+      avatarEl.classList.add('is-happy')
+    } else if (bannerState.type === 'timeout') {
+      bubbleEl.classList.add('is-timeout')
+    } else if (bannerState.type === 'peek') {
+      bubbleEl.classList.add('is-peek')
+      avatarEl.classList.add('is-peek')
+    } else if (
+      bannerState.type === 'match' ||
+      bannerState.type === 'streak' ||
+      bannerState.type === 'win_unlocked'
+    ) {
+      bubbleEl.classList.add('is-match')
+      avatarEl.classList.add('is-happy')
+    }
+
+    if (animate) {
+      void bubbleEl.offsetWidth
+      bubbleEl.classList.add('is-popping')
+    }
+  }
+
+  function spawnScoreFloat(cardEl) {
+    if (!cardEl) return
+    const badge = document.createElement('span')
+    badge.className = 'mem-score-float'
+    badge.textContent = `+${pointsPerPair}`
+    cardEl.appendChild(badge)
+    setTimeout(() => badge.remove(), 750)
   }
 
   function updateLocalizedLabelsInPlace() {
@@ -163,14 +256,17 @@ export function mountMemoryScreen(container) {
       if (labelEl && deck[idx]) {
         const label = getSymbolLabel(deck[idx].symbol)
         labelEl.textContent = label
-        cardEl.setAttribute('aria-label', deck[idx].flipped || deck[idx].matched ? label : 'Hidden card')
+        cardEl.setAttribute(
+          'aria-label',
+          inPreview || deck[idx].flipped || deck[idx].matched ? label : 'Hidden card',
+        )
       }
     })
-    updateBanner()
+    updateBanner(false)
   }
 
   function handleCardTap(index) {
-    if (finished || boardLocked) return
+    if (finished || boardLocked || inPreview) return
     const card = deck[index]
     if (!card || card.flipped || card.matched) return
 
@@ -187,10 +283,12 @@ export function mountMemoryScreen(container) {
     const second = deck[secondIdx]
 
     if (first.symbolId === second.symbolId) {
+      const prevScore = score
       first.matched = true
       second.matched = true
       matchedPairs += 1
       score += pointsPerPair
+      streak += 1
       openIndices = []
 
       const firstEl = container.querySelector(`.memory-card[data-idx="${firstIdx}"]`)
@@ -200,20 +298,35 @@ export function mountMemoryScreen(container) {
       firstEl?.setAttribute('disabled', 'true')
       secondEl?.setAttribute('disabled', 'true')
 
+      buzz(22)
+      spawnScoreFloat(secondEl)
       updateHudValues()
 
       if (matchedPairs >= totalPairs) {
         completeGame(true)
+      } else {
+        if (prevScore < needed && score >= needed) {
+          bannerState = { type: 'win_unlocked' }
+        } else if (streak >= 2) {
+          bannerState = { type: 'streak', streak }
+        } else {
+          bannerState = { type: 'match' }
+        }
+        updateBanner(true)
       }
     } else {
+      streak = 0
       boardLocked = true
+      const firstEl = container.querySelector(`.memory-card[data-idx="${firstIdx}"]`)
+      const secondEl = container.querySelector(`.memory-card[data-idx="${secondIdx}"]`)
+      firstEl?.classList.add('is-mismatch')
+      secondEl?.classList.add('is-mismatch')
+
       mismatchTimeout = setTimeout(() => {
         first.flipped = false
         second.flipped = false
-        const firstEl = container.querySelector(`.memory-card[data-idx="${firstIdx}"]`)
-        const secondEl = container.querySelector(`.memory-card[data-idx="${secondIdx}"]`)
-        firstEl?.classList.remove('is-flipped')
-        secondEl?.classList.remove('is-flipped')
+        firstEl?.classList.remove('is-flipped', 'is-mismatch')
+        secondEl?.classList.remove('is-flipped', 'is-mismatch')
         firstEl?.setAttribute('aria-label', 'Hidden card')
         secondEl?.setAttribute('aria-label', 'Hidden card')
         openIndices = []
@@ -233,23 +346,33 @@ export function mountMemoryScreen(container) {
         <span id="mem-target-tag" class="pill-tag">${escapeHtml(t('targetLabel', { needed }))}</span>
       </div>
 
-      <div class="hud-bar">
-        <div class="hud-stat">
-          <span id="mem-lbl-time" class="hud-label">${escapeHtml(t('timeLeft'))}</span>
-          <span id="mem-timer" class="hud-value">${timeLeft}s</span>
+      <div class="hud-bar mem-hud-bar">
+        <div class="mem-hud-row">
+          <div class="hud-stat">
+            <span id="mem-lbl-time" class="hud-label">${escapeHtml(t('timeLeft'))}</span>
+            <span id="mem-timer" class="hud-value">${timeLeft}s</span>
+          </div>
+          <div class="hud-stat">
+            <span id="mem-lbl-pairs" class="hud-label">${escapeHtml(t('pairsLabel'))}</span>
+            <span id="mem-pairs" class="hud-value">0/${totalPairs}</span>
+          </div>
+          <div class="hud-stat">
+            <span id="mem-lbl-score" class="hud-label">${escapeHtml(t('scoreLabel'))}</span>
+            <span id="mem-score" class="hud-value">0</span>
+          </div>
         </div>
-        <div class="hud-stat">
-          <span id="mem-lbl-pairs" class="hud-label">${escapeHtml(t('pairsLabel'))}</span>
-          <span id="mem-pairs" class="hud-value">0/${totalPairs}</span>
-        </div>
-        <div class="hud-stat">
-          <span id="mem-lbl-score" class="hud-label">${escapeHtml(t('scoreLabel'))}</span>
-          <span id="mem-score" class="hud-value">0</span>
+        <div class="mem-timer-track" aria-hidden="true">
+          <div id="mem-timer-fill" class="mem-timer-fill" style="width: 100%"></div>
         </div>
       </div>
 
-      <div id="mem-banner-slot">
-        <p class="memory-hint">${escapeHtml(t('memoryHint'))}</p>
+      <div class="mem-host-strip">
+        <div id="mem-fox-avatar" class="mem-fox-avatar ${inPreview ? 'is-peek' : ''}" aria-hidden="true">
+          ${getSymbolSvg('fox')}
+        </div>
+        <div id="mem-fox-bubble" class="mem-fox-bubble ${inPreview ? 'is-peek' : ''}" role="status">
+          ${escapeHtml(getBannerText())}
+        </div>
       </div>
 
       <div
@@ -264,9 +387,9 @@ export function mountMemoryScreen(container) {
             return `
               <button
                 type="button"
-                class="memory-card"
+                class="memory-card ${inPreview ? 'is-flipped' : ''}"
                 data-idx="${idx}"
-                aria-label="Hidden card"
+                aria-label="${inPreview ? escapeHtml(label) : 'Hidden card'}"
               >
                 <span class="memory-card-inner">
                   <span class="memory-card-face memory-card-back">
@@ -299,15 +422,29 @@ export function mountMemoryScreen(container) {
     })
   })
 
-  // Start countdown immediately
-  timerId = setInterval(() => {
-    if (finished) return
-    timeLeft = Math.max(0, timeLeft - 1)
-    updateHudValues()
-    if (timeLeft <= 0) {
-      completeGame(false)
-    }
-  }, 1000)
+  // Quick Peek sequence before starting the 45s game timer
+  if (inPreview) {
+    peekInterval = setInterval(() => {
+      peekRemaining -= 1
+      if (peekRemaining > 0) {
+        updateBanner(false)
+      } else {
+        clearInterval(peekInterval)
+        peekInterval = null
+        inPreview = false
+        boardLocked = false
+        container.querySelectorAll('.memory-card').forEach((cardEl) => {
+          cardEl.classList.remove('is-flipped')
+          cardEl.setAttribute('aria-label', 'Hidden card')
+        })
+        bannerState = { type: 'hint' }
+        updateBanner(true)
+        startCountdown()
+      }
+    }, 1000)
+  } else {
+    startCountdown()
+  }
 
   return {
     onLangChange: updateLocalizedLabelsInPlace,
