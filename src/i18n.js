@@ -1,9 +1,39 @@
 import { config } from './config.js'
 
 const LANG_STORAGE_KEY = 'play_and_win_lang'
+const LARGE_TEXT_STORAGE_KEY = 'play_and_win_large_text'
 
 let currentLang = loadInitialLanguage()
+let largeTextEnabled = loadInitialLargeText()
 const listeners = new Set()
+
+function loadInitialLargeText() {
+  try {
+    return localStorage.getItem(LARGE_TEXT_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function isLargeText() {
+  return largeTextEnabled
+}
+
+export function applyLargeText() {
+  if (typeof document === 'undefined') return
+  document.documentElement.classList.toggle('is-large-text', largeTextEnabled)
+}
+
+export function toggleLargeText() {
+  largeTextEnabled = !largeTextEnabled
+  try {
+    localStorage.setItem(LARGE_TEXT_STORAGE_KEY, largeTextEnabled ? '1' : '0')
+  } catch {
+    // Ignore storage errors
+  }
+  applyLargeText()
+  return largeTextEnabled
+}
 
 function loadInitialLanguage() {
   try {
@@ -135,10 +165,11 @@ export function getGameName(gameId, lang = currentLang) {
 }
 
 /**
- * Render the compact Singapore 4-language segmented tab bar.
+ * Render the compact Singapore 4-language segmented tab bar + A+ Large Text toggle.
  */
 export function renderLanguageBar(container) {
   const active = getLang()
+  const large = isLargeText()
   container.innerHTML = `
     <div class="lang-bar" role="tablist" aria-label="Choose language">
       ${config.languages.supported
@@ -155,11 +186,26 @@ export function renderLanguageBar(container) {
         )
         .join('')}
     </div>
+    <button
+      type="button"
+      id="large-text-toggle"
+      class="text-size-btn ${large ? 'is-active' : ''}"
+      aria-pressed="${large ? 'true' : 'false'}"
+      aria-label="Toggle large text"
+      title="Text Size (Small / Large)"
+    ><span class="aa-pair"><span class="aa-small">A</span><span class="aa-big">A</span></span></button>
   `
 
   container.querySelectorAll('.lang-tab').forEach((btn) => {
     btn.addEventListener('click', () => {
       setLang(btn.dataset.lang)
     })
+  })
+
+  const sizeBtn = container.querySelector('#large-text-toggle')
+  sizeBtn?.addEventListener('click', () => {
+    const enabled = toggleLargeText()
+    sizeBtn.classList.toggle('is-active', enabled)
+    sizeBtn.setAttribute('aria-pressed', enabled ? 'true' : 'false')
   })
 }

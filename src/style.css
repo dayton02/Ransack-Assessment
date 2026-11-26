@@ -154,14 +154,15 @@ input {
 }
 
 .lang-bar {
+  flex: 1;
+  min-width: 0;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
+  gap: 3px;
   background: rgba(252, 253, 247, 0.9);
   border: 1.5px solid rgba(37, 93, 99, 0.22);
   border-radius: var(--radius-pill);
   padding: 3px;
-  width: 100%;
   box-shadow: 0 4px 12px rgba(25, 68, 73, 0.12);
   backdrop-filter: blur(8px);
 }
@@ -170,9 +171,9 @@ input {
   border: none;
   background: transparent;
   color: var(--forest-teal-dark);
-  font-size: clamp(0.78rem, 3.2vw, 0.86rem);
+  font-size: clamp(12px, 3.2vw, 14px);
   font-weight: 700;
-  padding: 6px 4px;
+  padding: 6px 2px;
   min-height: 34px;
   border-radius: var(--radius-pill);
   cursor: pointer;
@@ -191,6 +192,193 @@ input {
   background: var(--forest-teal);
   color: #ffffff;
   box-shadow: 0 2px 8px rgba(25, 68, 73, 0.25);
+}
+
+.text-size-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 46px;
+  min-height: 42px;
+  padding: 0 10px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid rgba(37, 93, 99, 0.26);
+  background: rgba(252, 253, 247, 0.94);
+  color: var(--forest-teal-dark);
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(25, 68, 73, 0.12);
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    transform 0.12s ease,
+    border-color 0.16s ease;
+}
+
+.text-size-btn .aa-pair {
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 1px;
+  line-height: 1;
+}
+
+.text-size-btn .aa-small {
+  font-size: 11px;
+  font-weight: 800;
+  opacity: 0.78;
+}
+
+.text-size-btn .aa-big {
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.text-size-btn:active {
+  transform: scale(0.95);
+}
+
+.text-size-btn.is-active {
+  background: var(--forest-olive);
+  border-color: var(--forest-olive);
+  color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(109, 179, 63, 0.3);
+}
+
+.text-size-btn.is-active .aa-small {
+  opacity: 0.75;
+}
+
+.app-shell.is-viewport-fit .text-size-btn {
+  min-height: 38px;
+  min-width: 44px;
+}
+
+.app-shell.is-viewport-fit .text-size-btn .aa-big {
+  font-size: 17px;
+}
+
+/* ==========================================================================
+   Large Text Accessibility Mode (A+ toggle for grandparents & older eyes)
+   ========================================================================== */
+html.is-large-text {
+  font-size: 21px;
+}
+
+html.is-large-text .screen-body:not(.memory-screen) {
+  justify-content: flex-start;
+  padding-bottom: 12px;
+}
+
+html.is-large-text .hero-title {
+  font-size: 1.75rem;
+}
+
+html.is-large-text .section-title {
+  font-size: 1.45rem;
+}
+
+html.is-large-text .lead,
+html.is-large-text .game-choice-desc,
+html.is-large-text .notice-banner,
+html.is-large-text .prize-note {
+  font-size: 1.02rem;
+  color: var(--ink-primary);
+  line-height: 1.42;
+}
+
+html.is-large-text .muted,
+html.is-large-text .step-desc {
+  color: var(--ink-primary);
+  font-size: 0.84rem;
+}
+
+html.is-large-text .step-title {
+  font-size: 0.9rem;
+}
+
+html.is-large-text .steps-grid {
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+html.is-large-text .step-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  padding: 10px 12px;
+}
+
+html.is-large-text .step-num {
+  margin-bottom: 0;
+  width: 28px;
+  height: 28px;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+html.is-large-text .btn {
+  min-height: 58px;
+  font-size: 1.12rem;
+  padding: 14px 18px;
+}
+
+html.is-large-text .game-choice-title {
+  font-size: 1.2rem;
+}
+
+html.is-large-text .pill-tag,
+html.is-large-text .play-cta-pill,
+html.is-large-text .live-counter-pill {
+  font-size: 0.84rem;
+}
+
+html.is-large-text .quiz-question-text {
+  font-size: 1.42rem;
+  line-height: 1.32;
+}
+
+html.is-large-text .quiz-option-btn {
+  min-height: 60px;
+  padding: 14px 16px;
+  font-size: 1.14rem;
+}
+
+html.is-large-text .quiz-feedback {
+  font-size: 1rem;
+}
+
+html.is-large-text .hud-label {
+  font-size: 0.74rem;
+}
+
+html.is-large-text .hud-value {
+  font-size: 1.18rem;
+}
+
+html.is-large-text .memory-hint {
+  font-size: 0.9rem;
+}
+
+html.is-large-text .memory-card-front svg {
+  height: 42%;
+  max-height: 40px;
+}
+
+html.is-large-text .memory-card-label {
+  font-size: 0.84rem;
+}
+
+html.is-large-text .speech-bubble {
+  font-size: 0.96rem;
+  padding: 8px 14px;
+}
+
+html.is-large-text .claim-code {
+  font-size: 2.2rem;
 }
 
 /* ==========================================================================

@@ -1,5 +1,11 @@
 import './style.css'
-import { applyDocumentLang, getEventText, onLangChange, renderLanguageBar } from './i18n.js'
+import {
+  applyDocumentLang,
+  applyLargeText,
+  getEventText,
+  onLangChange,
+  renderLanguageBar,
+} from './i18n.js'
 import { getRoute } from './state.js'
 import { mountLandingScreen } from './screens/landing.js'
 import { mountSelectScreen } from './screens/select.js'
@@ -72,6 +78,7 @@ function syncDocumentTitle() {
 }
 
 applyDocumentLang()
+applyLargeText()
 syncDocumentTitle()
 
 onLangChange(() => {
