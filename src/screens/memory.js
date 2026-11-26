@@ -41,7 +41,7 @@ export function mountMemoryScreen(container) {
   const totalPairs = symbols.length
   const pointsPerPair = Number(config.memory.pointsPerPair) || 100
   const maxScore = totalPairs * pointsPerPair
-  const timeLimitSeconds = Math.min(59, Math.max(10, Number(config.memory.timeLimitSeconds) || 45))
+  const timeLimitSeconds = Math.min(59, Math.max(5, Number(config.memory.timeLimitSeconds) || 45))
   const mismatchDelayMs = Number(config.memory.mismatchDelayMs) || 750
   const { needed } = evaluateScore(0, maxScore)
 

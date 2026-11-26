@@ -1,5 +1,5 @@
 import './style.css'
-import { applyDocumentLang, onLangChange, renderLanguageBar } from './i18n.js'
+import { applyDocumentLang, getEventText, onLangChange, renderLanguageBar } from './i18n.js'
 import { getRoute } from './state.js'
 import { mountLandingScreen } from './screens/landing.js'
 import { mountSelectScreen } from './screens/select.js'
@@ -67,9 +67,15 @@ function mountCurrentRoute() {
   activeScreen = mount(screenRoot) || {}
 }
 
+function syncDocumentTitle() {
+  document.title = `${getEventText('appTitle')} — ${getEventText('eventName')}`
+}
+
 applyDocumentLang()
+syncDocumentTitle()
 
 onLangChange(() => {
+  syncDocumentTitle()
   const isAdmin = getRoute() === '/admin'
   if (!isAdmin) {
     renderLanguageBar(langBarSlot)

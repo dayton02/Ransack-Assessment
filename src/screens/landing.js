@@ -65,11 +65,12 @@ export function mountLandingScreen(container) {
 
   function getSpeechText() {
     const passPercent = Math.round((Number(config.rules.passMark) || 0.8) * 100)
+    const seconds = Math.min(59, Math.max(5, Number(config.memory.timeLimitSeconds) || 45))
     if (activeCritterIndex < 0 || activeCritterIndex >= CRITTERS.length) {
       return t('tapCritterHint')
     }
     const critter = CRITTERS[activeCritterIndex]
-    return t(critter.msgKey, { passPercent })
+    return t(critter.msgKey, { passPercent, seconds })
   }
 
   function updateInteractiveHighlight(index, fromCritterTap = false) {
